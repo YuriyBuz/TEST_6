@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оцінка Компетенцій: Механік Зміни (Виробництво Соусів)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root { --bg-color: #f1f5f9; --card-bg: #ffffff; --text-main: #0f172a; --primary: #0f766e; --danger: #e11d48; }
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: sans-serif; padding-bottom: 2rem; }
+        .card { background-color: var(--card-bg); border: 1px solid #cbd5e1; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .option-btn { transition: all 0.2s; border: 2px solid #e2e8f0; position: relative; }
+        .option-btn:not(.disabled):hover { border-color: var(--primary); background-color: #f0fdfa; }
+        .option-btn.correct-choice { border-color: var(--primary) !important; background-color: #ccfbf1 !important; color: #115e59; }
+        .option-btn.wrong-choice { border-color: var(--danger) !important; background-color: #ffe4e6 !important; color: #881337; }
+        .option-btn.disabled { cursor: default; opacity: 0.75; }
+        .feedback-box { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden { display: none !important; }
+        .spinner { animation: rotate 2s linear infinite; width: 16px; height: 16px; }
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+    <div class="container mx-auto max-w-3xl p-4 sm:p-6">
+        <header class="text-center mb-8 pt-6">
+            <div class="w-20 h-20 mx-auto mb-4 bg-teal-700 text-white rounded-2xl shadow-lg flex items-center justify-center text-4xl">
+                ⚙️
+            </div>
+            <div class="flex items-center justify-center gap-2 mb-2">
+                <div id="statusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
+                <span id="statusText" class="text-xs font-bold text-slate-500 uppercase tracking-widest">Онлайн Сервер</span>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-800">Атестація: Механік Зміни</h1>
+            <p class="text-slate-500 text-sm mt-1 font-medium">Технічна служба | ППР, КІПіА, Пневматика, LOTO</p>
+        </header>
+
+        <div id="step-login" class="card p-6 sm:p-8 rounded-3xl">
+            <div class="bg-teal-50 border-l-4 border-teal-600 p-5 mb-8 rounded-r-xl">
+                <h3 class="font-bold text-teal-900 text-sm flex items-center gap-2"><span class="text-lg">📋</span> Умови тестування:</h3>
+                <p class="text-sm text-teal-800 mt-2 leading-relaxed">
+                    Тест складається з 20 просунутих інженерних кейсів (рівень 8.5/10), що базуються на реальних ситуаціях виробництва соусів. Перевіряються навички траблшутингу, знання гігієнічного дизайну та електромеханіки. 
+                    <br><br><span class="font-bold border-b border-teal-300">Прохідний бар'єр: 16 з 20 (80%).</span>
+                </p>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-bold mb-2 text-slate-700">Оберіть ПІБ співробітника:</label>
+                <select id="employeeSelect" class="w-full p-4 border-2 border-slate-200 rounded-xl bg-white text-lg font-medium text-slate-700 focus:outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-50 transition-all cursor-pointer">
+                    <option value="" disabled selected>-- Натисніть для вибору --</option>
+                </select>
+            </div>
+            
+            <button onclick="startTest()" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold text-lg py-5 rounded-xl shadow-[0_4px_14px_0_rgba(15,118,110,0.39)] transition-all transform active:scale-[0.98]">
+                РОЗПОЧАТИ ОЦІНКУ
+            </button>
+        </div>
+
+        <div id="step-quiz" class="hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 px-2 gap-3">
+                <span class="text-sm font-bold text-slate-500 bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">
+                    Питання <span id="q-current" class="text-teal-700 text-lg">1</span> з <span id="q-total-counter">0</span>
+                </span>
+                <div class="w-full sm:w-1/2 bg-slate-200 rounded-full h-3 shadow-inner">
+                    <div id="progress-bar" class="bg-gradient-to-r from-teal-500 to-teal-400 h-3 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="card p-6 sm:p-8 rounded-3xl min-h-[480px] flex flex-col justify-between">
+                <div>
+                    <h2 id="question-text" class="text-xl sm:text-2xl font-bold mb-8 text-slate-800 leading-snug"></h2>
+                    <div id="options-container" class="space-y-3"></div>
+                    
+                    <div id="feedback-container" class="hidden mt-8 feedback-box">
+                        <div id="feedback-type" class="p-5 rounded-2xl border-l-4 shadow-sm">
+                            <div class="flex items-center mb-2">
+                                <span id="feedback-icon" class="mr-3 text-2xl"></span>
+                                <span id="feedback-title" class="font-extrabold text-lg tracking-wide"></span>
+                            </div>
+                            <p id="feedback-text" class="text-sm font-medium opacity-90 leading-relaxed"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="next-btn" onclick="nextQuestion()" disabled class="mt-10 w-full bg-slate-200 text-slate-400 font-bold py-5 rounded-xl cursor-not-allowed transition-all uppercase tracking-wider text-sm">
+                    Оберіть варіант відповіді
+                </button>
+            </div>
+        </div>
+
+        <div id="step-result" class="hidden text-center">
+            <div class="card p-8 sm:p-12 rounded-3xl">
+                <div id="sync-indicator" class="mb-6 text-[11px] font-black uppercase tracking-widest text-amber-500 flex items-center justify-center gap-2 bg-amber-50 py-2 px-4 rounded-lg inline-flex mx-auto">
+                    <span>Синхронізація...</span>
+                    <div class="spinner border-2 border-amber-500 border-t-transparent rounded-full"></div>
+                </div>
+                
+                <div id="icon-result" class="text-7xl mb-6"></div>
+                <h2 id="title-result" class="text-3xl sm:text-4xl font-extrabold mb-2"></h2>
+                
+                <div class="py-8 my-6 border-y-2 border-slate-100">
+                    <p class="text-6xl font-black text-slate-800 tracking-tighter">
+                        <span id="score-val">0</span><span class="text-3xl text-slate-300 mx-2">/</span><span id="score-total" class="text-4xl text-slate-400">0</span>
+                    </p>
+                    <p id="percentage-val" class="text-sm font-bold text-teal-700 mt-4 bg-teal-50 inline-block px-4 py-1.5 rounded-full uppercase tracking-wider"></p>
+                </div>
+                
+                <p id="msg-result" class="text-base sm:text-lg mb-10 px-2 sm:px-8 text-slate-600 leading-relaxed"></p>
+                
+                <div class="mb-10 flex flex-col items-center">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Офіційний протокол</p>
+                    <div id="qrcode" class="p-3 bg-white border-2 border-slate-100 rounded-2xl shadow-sm"></div>
+                </div>
+                
+                <button onclick="location.reload()" class="w-full py-5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition-all shadow-lg active:scale-95 uppercase tracking-wider text-sm">
+                    Завершити та вийти
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzkzOkyk2zwObyZThhZE1ACAPYAtwPMZsSoUij9yHw_vEKgmkImUOCVlk-F_SH06b_w/exec'; // Заглушка, замініть на свій
+        const OFFLINE_QUEUE_KEY = 'sauce_mechanics_offline_queue';
+        
+        const employeesList = [
+            "Галагін Є.Я", 
+            "Гора А.О", 
+            "Кандидат (Новий співробітник)"
+        ];
+
+        // 20 запитань підвищеної складності (Механіка, Електрика, КІПіА, Пневматика, ППР).
+        const originalQuestions = [
+            { 
+                q: "В роторному (кулачковому) насосі, що перекачує густий кетчуп, раптово впала продуктивність. Оберти двигуна в нормі, сторонніх шумів немає. Яка найімовірніша механічна причина?", 
+                a: [
+                    "Відбулося критичне зношення гумового статора насоса, потрібна його термінова заміна.", 
+                    "Збільшилися зазори між роторами та корпусом через знос. Це спричиняє внутрішнє перетікання (slip) продукту під тиском назад у зону всмоктування.", 
+                    "Необхідно збільшити частоту обертання двигуна через ПЧ для компенсації втрати тиску в магістралі."
+                ], 
+                ci: 1, 
+                h: "Роторні кулачкові насоси (Lobe pumps) не мають статорів. Вони об'ємної дії і критично залежні від мінімальних зазорів між роторами (соті частки міліметра) для забезпечення гідравлічного замка. Якщо зазор росте — рідина перетікає назад." 
+            },
+            { 
+                q: "Електрика: Двигун 5.5 кВт, керований частотним перетворювачем (ПЧ), стабільно випадає в помилку «Overcurrent» (Перевантаження по струму) під час ЗАПУСКУ масивного гомогенізатора. Ваша перша дія?", 
+                a: [
+                    "Вимкнути тепловий захист (Thermal Overload) в налаштуваннях ПЧ, щоб дозволити двигуну приймати пікові пускові струми.", 
+                    "Змінити частоту ШІМ (Carrier Frequency) на максимальне значення для забезпечення більш плавного наростання магнітного поля.", 
+                    "Збільшити час розгону (Acceleration Time) або відкоригувати стартову криву U/f (напр., Voltage Boost), щоб зменшити пускові струми при розгоні великої інерційної маси."
+                ], 
+                ci: 2, 
+                h: "Гомогенізатор має величезний момент інерції валу і шківів. Занадто швидкий розгон вимагає колосального струму для подолання інерції, що перевищує ліміт ПЧ. Збільшення часу розгону (Accel Time) вирішує цю проблему." 
+            },
+            { 
+                q: "Пневматика: Пневмоциліндри на фасувальній машині рухаються повільно та нестабільно, хоча манометр на головній лінії показує стабільні 6 бар робочого тиску. Де шукати проблему?", 
+                a: [
+                    "Глушники (silencers) на вихлопних портах пневморозподільників забилися пилом або мастилом. Це блокує вихід відпрацьованого повітря і створює протитиск.", 
+                    "Компресор не видає потрібної продуктивності, необхідно збільшити тиск у головній магістралі до 8 бар для подолання механічного опору.", 
+                    "Електромагнітна котушка (соленоїд) розподільника перегрілася і не повністю відкриває золотник клапана."
+                ], 
+                ci: 0, 
+                h: "Швидкість пневмоциліндра регулюється дроселюванням вихлопу. Якщо глушник на розподільнику забитий брудом, повітря не може швидко покинути неробочу порожнину циліндра. Утворюється «повітряна подушка», яка гальмує рух незалежно від тиску подачі." 
+            },
+            { 
+                q: "КІПіА: Датчик температури Pt100 на пастеризаторі раптово почав показувати на екрані SCADA максимальне значення шкали (наприклад, +850°C або сигнал помилки). Що це фізично означає?", 
+                a: [
+                    "Обрив лінії зв'язку (кабелю) або фізичне перегорання самого платинового чутливого елемента (опір прямує до нескінченності).", 
+                    "Коротке замикання в кабелі або потрапляння води в клемну коробку датчика.", 
+                    "Повна втрата калібрування трансмітера температури через сильні електромагнітні завади від сусіднього двигуна."
+                ], 
+                ci: 0, 
+                h: "Принцип дії термометра опору (Pt100) — збільшення опору зі зростанням температури. Коротке замикання (опір ~0 Ом) дасть різкий мінус (напр., -242°C), а обрив кабелю дає нескінченний опір, що контролер трактує як максимально можливу температуру." 
+            },
+            { 
+                q: "ППР: Під час регламентного змащування підшипників високошвидкісної центрифуги (понад 3000 об/хв) за допомогою шприца, якого критичного правила ви повинні дотримуватись?", 
+                a: [
+                    "Заповнювати корпус на 100% об'єму будь-яким літієвим мастилом для забезпечення максимального захисту від потрапляння води під час миття під тиском.", 
+                    "Використовувати харчове мастило (NSF H1) і заповнювати вільний об'єм підшипника не більше ніж на 30-50% для запобігання критичного перегріву від рідинного тертя.", 
+                    "Обов'язково змішувати літієві та полісечовинні мастила для досягнення комбінованих високошвидкісних та водостійких характеристик."
+                ], 
+                ci: 1, 
+                h: "Надлишок мастила у високошвидкісних підшипниках є найчастішою причиною їх виходу з ладу (overgreasing). Мастилу нікуди діватися, воно починає «збиватися», виникає колосальне рідинне тертя, температура різко зростає і підшипник руйнується." 
+            },
+            { 
+                q: "Механіка: Торцеве механічне ущільнення (mechanical seal) на відцентровому насосі почало протікати струменем одразу після інсталяції та першого запуску. Яка найімовірніша помилка монтажу?", 
+                a: [
+                    "Насос був занадто добре заповнений рідиною перед пуском, що створило руйнівний гідроудар на керамічні поверхні ущільнення.", 
+                    "Торцеві поверхні (пари тертя) були забруднені пальцями під час монтажу, або не витримана співвісність валу, що спричинило перекіс і розкриття кілець.", 
+                    "Пружина ущільнення була стиснута недостатньо, потрібно було підкласти додаткову шайбу для збільшення сили притискання."
+                ], 
+                ci: 1, 
+                h: "Пари тертя торцевих ущільнень (SiC/Carbon) мають оптичну точність полірування (прилягання до часток мікрона). Торкання їх брудними руками (жир) або найменший перекіс валу гарантовано призводить до миттєвої розгерметизації." 
+            },
+            { 
+                q: "КІПіА / Датчики: Ультразвуковий датчик рівня, встановлений на танку для варіння гарячого соусу (85°C), періодично показує різкі стрибки рівня або втрачає сигнал. Яка найбільш імовірна причина і правильне рішення?", 
+                a: [
+                    "Ультразвукові хвилі відбиваються від густої пари, що піднімається від гарячого продукту, створюючи хибні ехо-сигнали. Потрібно замінити його на радарний датчик.", 
+                    "Висока температура продукту розплавила мембрану датчика. Потрібно встановити датчик з тефлоновим покриттям і збільшити мертву зону.", 
+                    "Швидкість поширення звуку в повітрі падає при нагріванні, тому датчик занижує рівень. Потрібно перекалібрувати прилад на робочу температуру."
+                ], 
+                ci: 0, 
+                h: "Ультразвукові датчики дуже чутливі до пари та конденсату, які утворюють «хмару» і відбивають звук раніше, ніж він досягне продукту. Для гарячих рідин з інтенсивним випаровуванням стандартом є радарні датчики (Radar), мікрохвилі яких легко проходять крізь пару." 
+            },
+            { 
+                q: "Пневматика: Пневморозподільник 5/2 постійно «труїть» (випускає) повітря через вихлопний порт, навіть коли виконавчий циліндр повністю зупинився в крайньому положенні. Котушка справна. Причина?", 
+                a: [
+                    "Тиск подачі повітря перевищує номінальний, що змушує клапан скидати надлишок тиску для захисту пневмоциліндра.", 
+                    "Відсутній або пошкоджений глушник на вихлопному порту, що викликає явище кавітації повітря всередині золотника.", 
+                    "Зносився золотник розподільника, АБО зносилися внутрішні манжети пневмоциліндра (повітря перетікає з робочої порожнини в неробочу і виходить через вихлоп)."
+                ], 
+                ci: 2, 
+                h: "Витік повітря через вихлоп у статичному положенні — класична ознака внутрішнього перетікання. У 80% випадків винен не сам клапан, а поршневе кільце (манжета) циліндра, через яке повітря продавлюється в сусідню камеру і повертається у вихлоп клапана." 
+            },
+            { 
+                q: "Електрика: Індуктивний датчик (PNP, Normally Open) перестав бачити металеві кришки. Ви піднесли до нього гайку. Яку напругу повинен показати мультиметр між чорним (сигнальним) і синім (0В) проводами справного датчика?", 
+                a: [
+                    "Аналоговий струмовий сигнал в діапазоні від 4 до 20 мА залежно від відстані до металу.", 
+                    "Приблизно 0 Вольт (повне падіння напруги).", 
+                    "Напругу живлення ланцюга (зазвичай +24В DC)."
+                ], 
+                ci: 2, 
+                h: "Датчик типу PNP («Positive-Negative-Positive») є комутатором плюса. При спрацьовуванні (Normally Open) він подає позитивний потенціал (+24В від коричневого проводу) на сигнальний вихід (чорний провід). Синій провід — це завжди загальний мінус (0В)." 
+            },
+            { 
+                q: "Трубопроводи / EHEDG: Під час монтажу нової гігієнічної лінії для повернення розчинів від CIP-мийки, якої жорсткої вимоги щодо ухилу труб треба дотримуватись?", 
+                a: [
+                    "Забезпечити постійний ухил лінії не менше 1-2% (1-2 см перепаду висоти на 1 метр довжини) у бік точки дренажу для забезпечення повного самоспорожнення.", 
+                    "Змонтувати трубопровід ідеально горизонтально (за рівнем 0 градусів), щоб гарантувати рівномірний розподіл мийних розчинів по трубі.", 
+                    "Створити контруклон (зворотний ухил) до насоса подачі, щоб утримувати технологічний підпір рідини та запобігати сухому ходу насоса."
+                ], 
+                ci: 0, 
+                h: "Стандарти харчової безпеки (EHEDG, 3-A Sanitary Standards) вимагають, щоб усі гігієнічні трубопроводи мали здатність самоспорожнюватися гравітаційно. Це виключає утворення застійних калюж з водою чи залишками продукту, де миттєво розмножуються бактерії." 
+            },
+            { 
+                q: "Механіка: На головному приводі машини часто рветься зубчастий поліуретановий ремінь. Натяг ременя виставляється ідеально за приладом-тензометром. Що механіку перевірити в першу чергу?", 
+                a: [
+                    "Наявність спеціального силіконового мастила на зубах ременя для зменшення коефіцієнта тертя при вході в зачеплення.", 
+                    "Співвісність шківів (лазерна вивірка на паралельність та кутовий перекіс). Перекіс викликає сповзання ременя на реборду шківа і руйнування.", 
+                    "Температуру навколишнього середовища, оскільки зубчасті ремені не можуть працювати при температурі вище +30°C."
+                ], 
+                ci: 1, 
+                h: "Зубчасті ремені абсолютно не переносять перекосу шківів. Навіть мінімальний кутовий зсув змушує ремінь наповзати на бортик (реборду) шківа, що призводить до швидкого перетирання корду або зрізання зубів через нерівномірне навантаження." 
+            },
+            { 
+                q: "Механіка / Гідравліка: Відцентровий насос перекачує воду (90°C) з відкритого бака. Насос видає сильний тріск (схожий на каміння всередині), а манометр на виході коливається. Яке це явище і як його усунути?", 
+                a: [
+                    "Це наслідок потрапляння повітря через негерметичне торцеве ущільнення. Необхідно підтягнути пружину ущільнення або замінити його.", 
+                    "Це кавітація (закипання в зоні всмоктування). Потрібно збільшити підпір (кавітаційний запас NPSH), піднявши бак вище над насосом, або охолодити воду.", 
+                    "Відбувається зрив потоку через занадто високий тиск нагнітання. Потрібно прикрити засувку на всмоктувальному патрубку для створення опору."
+                ], 
+                ci: 1, 
+                h: "Тріск «каміння» та стрибки тиску при перекачуванні гарячої води — класичні ознаки кавітації. Гаряча вода має низький тиск насичених парів і легко закипає при найменшому розрідженні. Прикриття всмоктувальної засувки тільки посилить кавітацію!" 
+            },
+            { 
+                q: "Електрика: Згідно з ПТЕЕС, який мінімально допустимий опір ізоляції обмоток статора низьковольтного (до 1000В) електродвигуна відносно корпусу при вимірюванні мегаомметром напругою 500В?", 
+                a: [
+                    "Не більше 100 Ом (опір має бути мінімальним для кращої провідності).", 
+                    "Не менше 0.5 МегаОм (але на практиці для надійності вимагається >1 МОм).", 
+                    "Точно 0 Ом (що підтверджує надійний контакт ізоляції з контуром заземлення)."
+                ], 
+                ci: 1, 
+                h: "Опір ізоляції — це опір витоку струму з обмоток на корпус. Він має бути максимально великим. Норматив — не менше 0.5 МОм для двигунів до 1 кВ. Стандартне правило механіків: 1 МегаОм на кожен 1 кіловольт робочої напруги + 1 МОм запасу." 
+            },
+            { 
+                q: "Зварювання: Механік виконує TIG-зварювання (аргоном) труби з харчової нержавіючої сталі AISI 316L. Як гарантувати відсутність «їжаків» (пористого окислення) на внутрішній поверхні шва?", 
+                a: [
+                    "Обов'язково організувати піддув (формування) чистого аргону або суміші всередину труби для повного витіснення кисню на час зварювання та охолодження металу.", 
+                    "Зварювати виключно зовнішнім швом з додаванням великої кількості присадного дроту для створення товстого захисного шару.", 
+                    "Застосувати полум'я газового пальника (кисень+ацетилен) всередині труби для випалювання надлишків кисню перед зварюванням."
+                ], 
+                ci: 0, 
+                h: "Зварювання санітарних нержавіючих труб вимагає 100% захисту зворотного боку шва інертним газом (Purging). Без цього кисень повітря реагує з розплавленим металом, утворюючи чорний пористий шлак («sugar»), де накопичуватимуться бактерії. Його не змити CIP." 
+            },
+            { 
+                q: "Гідравліка: На насосній станції підвищення тиску води (Booster pump) насос почав тактувати (вмикається і вимикається кожні 2-3 секунди) при мінімальному відкритті крана на мийці. Де шукати причину?", 
+                a: [
+                    "Розірвалася гумова мембрана в мембранному розширювальному баці (гідроакумуляторі), або з нього повністю вийшло (стравилося) повітря.", 
+                    "Збилися налаштування ПІД-регулятора в частотному перетворювачі, встановлено занадто великий час інтегрування.", 
+                    "Засмітився зворотний клапан на всмоктувальній магістралі, через що насос щоразу втрачає воду після зупинки."
+                ], 
+                ci: 0, 
+                h: "Гідроакумулятор слугує демпфером для згладжування стрибків тиску. Якщо в ньому немає повітряної подушки (груша порвана або пробитий ніпель), нестислива вода миттєво піднімає тиск у трубах до межі зупинки, а при відкритті крана тиск так само миттєво падає до старту. Це спричиняє жорстке тактування." 
+            },
+            { 
+                q: "Безпека: Яка головна інженерна мета процедури LOTO (Lockout/Tagout) перед початком заміни ріжучих ножів на працюючому пакувальному автоматі?", 
+                a: [
+                    "Унеможливити доступ сторонніх осіб до дорогих інструментів та запчастин механіка під час проведення ремонту.", 
+                    "Зафіксувати точний час початку простою обладнання для системи електронного обліку ефективності виробництва (OEE).", 
+                    "Фізично ізолювати, заблокувати персональними замками та позначити всі джерела небезпечної енергії (струм, повітря, пара), щоб неможливо було випадково запустити машину."
+                ], 
+                ci: 2, 
+                h: "LOTO (Блокування та Маркування) — це світовий стандарт безпеки. Він рятує життя, фізично не дозволяючи нікому (навіть оператору) увімкнути живлення, подати стиснене повітря або пару, поки механік перебуває в небезпечній зоні машини." 
+            },
+            { 
+                q: "КІПіА: Аналоговий трансмітер тиску на лінії має діапазон вимірювання від 0 до 250 бар та стандартний вихідний сигнал 4–20 мА. Якщо ваш мультиметр показує рівно 12 мА, який реальний тиск у системі?", 
+                a: [
+                    "125 бар.", 
+                    "150 бар.", 
+                    "100 бар."
+                ], 
+                ci: 0, 
+                h: "Робочий діапазон струму становить 16 мА (від 4 до 20). Значення 12 мА знаходиться рівно посередині цього діапазону (4 + 8 = 12). Відповідно, тиск також дорівнює половині шкали вимірювання: 250 / 2 = 125 бар." 
+            },
+            { 
+                q: "Механіка: Черв'ячний редуктор, що обертає мішалку в дуже в'язкому продукті, нагрівається до температури >90°C. Рівень синтетичного мастила в нормі. Яка конструктивна особливість редуктора спричиняє такий нагрів?", 
+                a: [
+                    "Черв'ячне колесо обертається надто повільно і не встигає ефективно розбризкувати мастило на верхні стінки корпусу редуктора.", 
+                    "Черв'ячні передачі мають специфіку: висока частка тертя ковзання між витками черв'яка та колесом і низький ККД. При перевантаженнях це тертя масово генерує тепло.", 
+                    "Відбувається кавітація трансмісійного мастила через занадто високу швидкість обертання вхідного валу."
+                ], 
+                ci: 1, 
+                h: "На відміну від циліндричних або конічних передач (де переважає тертя кочення), у черв'ячній передачі зуби буквально ковзають один по одному. Це дає низький ККД (60-80%). Втрачена енергія двигуна повністю перетворюється на тепло, особливо при пікових навантаженнях мішалки." 
+            },
+            { 
+                q: "Інсталяція: Під час лазерного центрування (alignment) валів електродвигуна та відцентрового насоса, прилад вимагає перевірити і усунути явище «м'якої лапи» (soft foot). Що це таке?", 
+                a: [
+                    "Ситуація, коли не всі 4 лапи двигуна лежать в одній площині на станині (проміжок). При затягуванні болта корпус двигуна деформується і вал згинається.", 
+                    "Необхідність обов'язкового встановлення гумових або поліуретанових віброізоляторів (сайлентблоків) під усі точки кріплення двигуна.", 
+                    "Використання кріпильних болтів зі спеціальної м'якої сталі, які здатні тягнутися та компенсувати теплове розширення вузла."
+                ], 
+                ci: 0, 
+                h: "«М'яка лапа» аналогічна хисткому столу з ніжкою, що висить у повітрі. Якщо ви з силою притягнете цю лапу болтом до металевої рами, чавунний корпус двигуна перекосить, статор скривиться, вал зміститься, а підшипники вийдуть з ладу за тиждень." 
+            },
+            { 
+                q: "Електропривод: На шильдику нового асинхронного двигуна вказано «Δ/Y 230/400V». Частотний перетворювач (ПЧ) видає 3 фази по 400В. Механік помилково зібрав перемички в клемній коробці за схемою «трикутник» (Δ). Що станеться при запуску?", 
+                a: [
+                    "Двигун не запуститься взагалі, оскільки схема «трикутник» призначена виключно для запуску від однофазної мережі 220В через конденсатор.", 
+                    "Двигун працюватиме нормально, але його максимальні оберти будуть у 1.73 рази нижчими за номінальні через перекіс фаз.", 
+                    "На обмотки піде 400В замість допустимих 230В. Це викличе критичний перегрів, величезний струм, і ПЧ негайно видасть помилку перевантаження (або згорить статор)."
+                ], 
+                ci: 2, 
+                h: "Маркування Δ/Y 230/400V означає, що кожна обмотка витримує максимум 230В. При підключенні «зіркою» (Y) до 400В, на обмотку падає 230В. При помилковому підключенні «трикутником» (Δ), на обмотку обрушаться всі 400В лінійної напруги, що призведе до теплового і магнітного пробою." 
+            }
+        ];
+
+        let currentQIndex = 0, score = 0, userName = "", selectedOptionIndex = null, testLog = [], currentOptions = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const select = document.getElementById('employeeSelect');
+            employeesList.forEach(name => { 
+                const opt = document.createElement('option'); 
+                opt.value = name; 
+                opt.textContent = name; 
+                select.appendChild(opt); 
+            });
+            document.getElementById('q-total-counter').innerText = originalQuestions.length;
+            
+            updateNetworkStatus();
+            window.addEventListener('online', () => { updateNetworkStatus(); processOfflineQueue(); });
+            window.addEventListener('offline', updateNetworkStatus);
+        });
+
+        function shuffle(a) { 
+            for (let i = a.length - 1; i > 0; i--) { 
+                const j = Math.floor(Math.random() * (i + 1)); 
+                [a[i], a[j]] = [a[j], a[i]]; 
+            } 
+            return a; 
+        }
+
+        function startTest() { 
+            userName = document.getElementById('employeeSelect').value; 
+            if (!userName) { alert("Будь ласка, оберіть ПІБ співробітника для початку тесту."); return; } 
+            
+            document.getElementById('step-login').classList.add('hidden'); 
+            document.getElementById('step-quiz').classList.remove('hidden'); 
+            renderQuestion(); 
+        }
+
+        function renderQuestion() {
+            const q = originalQuestions[currentQIndex];
+            document.getElementById('q-current').innerText = currentQIndex + 1;
+            document.getElementById('progress-bar').style.width = `${((currentQIndex) / originalQuestions.length) * 100}%`;
+            document.getElementById('question-text').innerText = q.q;
+            document.getElementById('feedback-container').classList.add('hidden');
+            
+            const container = document.getElementById('options-container'); 
+            container.innerHTML = '';
+            
+            const nextBtn = document.getElementById('next-btn'); 
+            nextBtn.disabled = true;
+            nextBtn.className = "mt-10 w-full bg-slate-200 text-slate-400 font-bold py-5 rounded-xl cursor-not-allowed transition-all uppercase tracking-wider text-sm";
+            nextBtn.innerText = "Оберіть варіант відповіді";
+            
+            currentOptions = q.a.map((text, i) => ({ text, isCorrect: i === q.ci }));
+            shuffle(currentOptions);
+            
+            currentOptions.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn w-full text-left p-4 sm:p-5 rounded-2xl text-base sm:text-lg flex items-start sm:items-center mb-3 leading-snug font-medium text-slate-700 bg-white';
+                btn.innerHTML = `<span class="w-8 h-8 mt-0.5 sm:mt-0 rounded-lg border-2 border-slate-200 flex-shrink-0 flex items-center justify-center mr-4 text-xs font-bold text-slate-400 uppercase bg-slate-50">${String.fromCharCode(65 + i)}</span> <span class="flex-1">${opt.text}</span>`;
+                btn.onclick = () => showFeedback(i, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function showFeedback(idx, btn) {
+            if (selectedOptionIndex !== null) return;
+            selectedOptionIndex = idx;
+            const isCorrect = currentOptions[idx].isCorrect;
+            
+            // Mark chosen logic
+            if (isCorrect) { 
+                score++; 
+                btn.classList.add('correct-choice'); 
+                testLog.push('✅'); 
+            } else { 
+                btn.classList.add('wrong-choice'); 
+                testLog.push('❌'); 
+                // Show the correct one
+                document.querySelectorAll('.option-btn').forEach((b, i) => { 
+                    if (currentOptions[i].isCorrect) b.classList.add('correct-choice'); 
+                }); 
+            }
+            
+            // Disable all buttons
+            document.querySelectorAll('.option-btn').forEach(b => b.classList.add('disabled'));
+            
+            // Update progress bar immediately upon answering
+            document.getElementById('progress-bar').style.width = `${((currentQIndex + 1) / originalQuestions.length) * 100}%`;
+            
+            // Show Feedback Block
+            const fbox = document.getElementById('feedback-container');
+            const ftype = document.getElementById('feedback-type');
+            const ficon = document.getElementById('feedback-icon');
+            const ftitle = document.getElementById('feedback-title');
+            const ftext = document.getElementById('feedback-text');
+            
+            fbox.classList.remove('hidden'); 
+            ftext.innerText = originalQuestions[currentQIndex].h;
+            
+            if (isCorrect) { 
+                ftype.className = "p-5 rounded-2xl border-l-4 border-emerald-500 bg-emerald-50 text-emerald-900"; 
+                ficon.innerText = "💡"; 
+                ftitle.innerText = "Абсолютно вірно!"; 
+            } else { 
+                ftype.className = "p-5 rounded-2xl border-l-4 border-rose-500 bg-rose-50 text-rose-900"; 
+                ficon.innerText = "🔧"; 
+                ftitle.innerText = "Технічна помилка"; 
+            }
+            
+            // Update Next Button
+            const nextBtn = document.getElementById('next-btn'); 
+            nextBtn.disabled = false; 
+            const isLast = currentQIndex === originalQuestions.length - 1;
+            nextBtn.innerText = isLast ? "Завершити та переглянути результат" : "Наступний кейс";
+            nextBtn.className = "mt-10 w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-5 rounded-xl shadow-[0_4px_14px_0_rgba(15,118,110,0.39)] transition-all transform active:scale-[0.98] uppercase tracking-wider text-sm";
+        }
+
+        function nextQuestion() { 
+            selectedOptionIndex = null; 
+            currentQIndex++; 
+            if (currentQIndex < originalQuestions.length) {
+                renderQuestion(); 
+            } else {
+                showResults(); 
+            }
+        }
+
+        function showResults() {
+            document.getElementById('step-quiz').classList.add('hidden'); 
+            document.getElementById('step-result').classList.remove('hidden');
+            
+            const total = originalQuestions.length;
+            const pct = Math.round((score / total) * 100);
+            const passed = score >= 16; // 16 з 20 (80%) для проходження
+            
+            document.getElementById('score-val').innerText = score; 
+            document.getElementById('score-total').innerText = total;
+            document.getElementById('percentage-val').innerText = `Коефіцієнт: ${pct}%`;
+            
+            const icon = document.getElementById('icon-result');
+            const title = document.getElementById('title-result');
+            const msg = document.getElementById('msg-result');
+            const pctBadge = document.getElementById('percentage-val');
+            
+            if (passed) { 
+                icon.innerText = "🏆"; 
+                title.innerText = "Компетенцію Підтверджено"; 
+                title.className = "text-3xl sm:text-4xl font-extrabold mb-2 text-emerald-600"; 
+                msg.innerText = "Відмінний результат! Ви продемонстрували високий рівень розуміння механіки, електромеханічних процесів та культури харчової безпеки на виробництві."; 
+                pctBadge.className = "text-sm font-bold text-emerald-700 mt-4 bg-emerald-50 inline-block px-4 py-1.5 rounded-full uppercase tracking-wider border border-emerald-200";
+            } else { 
+                icon.innerText = "⚠️"; 
+                title.innerText = "Потребує Опрацювання"; 
+                title.className = "text-3xl sm:text-4xl font-extrabold mb-2 text-rose-600"; 
+                msg.innerText = `Мінімальний прохідний бар'єр становить 16 балів (80%). Ваш результат: ${score}. Рекомендується додатково опрацювати технічні мануали обладнання та процедури ППР перед перездачею.`; 
+                pctBadge.className = "text-sm font-bold text-rose-700 mt-4 bg-rose-50 inline-block px-4 py-1.5 rounded-full uppercase tracking-wider border border-rose-200";
+            }
+            
+            const payload = { 
+                formType: 'MECHANIC_COMPETENCY_TEST', 
+                name: userName, 
+                score: score, 
+                total: total, 
+                percent: pct, 
+                passed: passed, 
+                details: testLog.join(' '), 
+                date: new Date().toISOString() 
+            };
+            
+            sendToGAS(payload);
+            
+            // Generate Verification QR
+            const dateStr = new Date().toLocaleDateString('uk-UA');
+            const qrText = `TECH_AUTH|${dateStr}|${userName}|Score:${score}/${total}|${passed?'PASS':'FAIL'}`;
+            try { 
+                document.getElementById("qrcode").innerHTML = ""; // Clear existing
+                new QRCode(document.getElementById("qrcode"), { 
+                    text: qrText, 
+                    width: 160, 
+                    height: 160, 
+                    colorDark : "#0f172a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.M 
+                }); 
+            } catch (e) { console.error("QR Code Generation Error:", e); }
+        }
+
+        // Offline / Google Apps Script Sync Logic
+        function sendToGAS(p) {
+            if (!navigator.onLine) { saveToOffline(p); return; }
+            fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(p) })
+            .then(() => {
+                document.getElementById('sync-indicator').className = "mb-6 text-[11px] font-black uppercase tracking-widest text-emerald-600 flex items-center justify-center gap-2 bg-emerald-50 py-2 px-4 rounded-lg inline-flex mx-auto border border-emerald-100";
+                document.getElementById('sync-indicator').innerHTML = '<span>✅ Дані збережено на сервері</span>';
+            })
+            .catch(() => saveToOffline(p));
+        }
+
+        function saveToOffline(p) { 
+            const q = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]'); 
+            q.push(p); 
+            localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q)); 
+            document.getElementById('sync-indicator').className = "mb-6 text-[11px] font-black uppercase tracking-widest text-rose-600 flex items-center justify-center gap-2 bg-rose-50 py-2 px-4 rounded-lg inline-flex mx-auto border border-rose-100";
+            document.getElementById('sync-indicator').innerHTML = '<span>📵 Збережено офлайн. Синхронізація при підключенні.</span>'; 
+        }
+
+        async function processOfflineQueue() {
+            if (!navigator.onLine) return; 
+            const q = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]'); 
+            if (q.length === 0) return;
+            
+            document.getElementById('sync-indicator').innerHTML = '<span>Синхронізація офлайн даних...</span><div class="spinner border-2 border-amber-500 border-t-transparent rounded-full"></div>';
+            
+            for (const p of [...q]) { 
+                try { 
+                    await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(p) }); 
+                    q.shift(); 
+                } catch (e) { break; } 
+            }
+            
+            localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q)); 
+            updateNetworkStatus();
+            if(q.length === 0) {
+                document.getElementById('sync-indicator').className = "mb-6 text-[11px] font-black uppercase tracking-widest text-emerald-600 flex items-center justify-center gap-2 bg-emerald-50 py-2 px-4 rounded-lg inline-flex mx-auto border border-emerald-100";
+                document.getElementById('sync-indicator').innerHTML = '<span>✅ Всі дані синхронізовано</span>';
+            }
+        }
+
+        function updateNetworkStatus() { 
+            const dot = document.getElementById('statusDot');
+            const txt = document.getElementById('statusText'); 
+            if (!navigator.onLine) { 
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]'; 
+                txt.textContent = 'Офлайн (Локально)'; 
+            } else { 
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'; 
+                txt.textContent = 'Онлайн Сервер'; 
+            } 
+        }
+    </script>
+</body>
+</html>
