@@ -131,11 +131,6 @@
             "Сабадаш Геннадій Петрович"
         ];
 
-        // Кандидати на співбесіді не є працівниками і не мають логіна на порталі,
-        // тому цей тест лишається доступним за прямим посиланням (REQUIRE_PORTAL = false).
-        // Пункт додається в кінець списку, після відсортованих ПІБ працівників.
-        const EXTRA_OPTIONS = ["Кандидат (Новий співробітник)"];
-
         // 20 запитань підвищеної складності (Механіка, Електрика, КІПіА, Пневматика, ППР).
         const originalQuestions = [
             { 
@@ -344,7 +339,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const select = document.getElementById('employeeSelect');
-            employeesList.sort((a, b) => a.localeCompare(b, 'uk')).concat(EXTRA_OPTIONS).forEach(name => { 
+            employeesList.sort((a, b) => a.localeCompare(b, 'uk')).forEach(name => { 
                 const opt = document.createElement('option'); 
                 opt.value = name; 
                 opt.textContent = name; 
@@ -595,7 +590,7 @@
         //   true  — тест відкривається ТІЛЬКИ з порталу; прямі посилання
         //           блокуються, список ПІБ не використовується взагалі
         //           ("мертві душі" зникають повністю).
-        var REQUIRE_PORTAL = false;
+        var REQUIRE_PORTAL = true;
 
         var pt = null;
         try { pt = new URLSearchParams(location.search).get('pt'); } catch (e) { pt = null; }
