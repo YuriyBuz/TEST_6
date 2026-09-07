@@ -122,10 +122,13 @@
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzkzOkyk2zwObyZThhZE1ACAPYAtwPMZsSoUij9yHw_vEKgmkImUOCVlk-F_SH06b_w/exec'; // Заглушка, замініть на свій
         const OFFLINE_QUEUE_KEY = 'sauce_mechanics_offline_queue';
         
+        // Актуально на 07.09.2026. Джерело істини — довідник працівників.
+        // Використовується лише як резерв: при вході з порталу ПІБ приходить
+        // із самого порталу (див. блок підтвердження особи внизу файлу).
         const employeesList = [
-            "Галагін Є.Я", 
-            "Гора А.О", 
-            "Кандидат (Новий співробітник)"
+            "Галагін Євгеній Ярославович",
+            "Гора Андрій Олександрович",
+            "Сабадаш Геннадій Петрович"
         ];
 
         // 20 запитань підвищеної складності (Механіка, Електрика, КІПіА, Пневматика, ППР).
@@ -336,7 +339,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const select = document.getElementById('employeeSelect');
-            employeesList.forEach(name => { 
+            employeesList.sort((a, b) => a.localeCompare(b, 'uk')).forEach(name => { 
                 const opt = document.createElement('option'); 
                 opt.value = name; 
                 opt.textContent = name; 
@@ -587,7 +590,7 @@
         //   true  — тест відкривається ТІЛЬКИ з порталу; прямі посилання
         //           блокуються, список ПІБ не використовується взагалі
         //           ("мертві душі" зникають повністю).
-        var REQUIRE_PORTAL = false;
+        var REQUIRE_PORTAL = true;
 
         var pt = null;
         try { pt = new URLSearchParams(location.search).get('pt'); } catch (e) { pt = null; }
